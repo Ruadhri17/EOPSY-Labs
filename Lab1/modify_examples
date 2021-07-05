@@ -1,0 +1,175 @@
+#! /bin/bash 
+help_flag=false
+display_help() # fun. which display message if user entered -h command 
+{
+cat << HELP
+
+Usage: 
+$0
+$0 [-h] 
+
+-h to view help
+In order to make script working it must be in the same directory as ./modify
+Script will create new directories in its location.
+After finishing testing it will clean up all files and directories it created.
+HELP
+exit 0
+}
+
+test_modify()
+{
+clear
+# Creating necessery files for testing 
+mkdir test_modify 1>&/dev/null
+cd test_modify
+mkdir test1 test2 1>&/dev/null
+cd test1 
+touch  abc.txt DEF.TXT 
+cd "$OLDPWD"
+cd test2 
+mkdir -- test3 test3/"final test"
+cd "$OLDPWD"
+touch -- test2/"ordinary file.txt"
+touch -- test2/test3/"another ordinary file.txt"
+cd -- test2/test3/"final test"
+touch -- "seprate name.txt" "*asterix*.txt" '!exclamation!.txt' '#hash#.txt' '-minus-.txt' '(paranthesis).txt' ';semicolon;.txt' "\$dolarsign$.txt" '&apersant&.txt'
+cd "$OLDPWD"
+cd ..
+clear
+
+echo "Case 1: Testing Help"
+echo "used command: ./modify -h"
+./modify -h 
+read -p "Press enter to continue"
+clear
+
+echo "Case 2: Testing help with file"
+echo "used command: ./modify -h test_modify/test1/abc.txt"
+./modify -h test_modify/test1/abc.txt
+read -p "Press enter to continue"
+clear
+
+echo "Case 3: Testing help with other arguments"
+echo "used command: ./modify -h -r -l"
+./modify -h -r -l 
+read -p "Press enter to continue"
+clear
+
+echo "Case 4: Writing non-existent argument"
+echo "used command: ./modify -x"
+./modify -x 
+read -p "Press enter to continue"
+clear
+
+echo "Case 5: Writing no argument and only file"
+echo "used command: ./modify test_modify/test1/abc.txt"
+./modify test_modify/test1/abc.txt
+echo "note: nothing happened"
+read -p "Press enter to continue"
+clear
+
+echo "Case 6: Writing -l and -u arguments at the same time"
+echo "used command: ./modify -l -u test_modify/test1/abc.txt"
+./modify -l -u test_modify/test1/abc.txt
+read -p "Press enter to continue"
+clear
+echo "Case 7: Changing file named fgh.txt that does not exist"
+echo "used command: ./modify -l fgh.txt"
+./modify -l fgh.txt
+read -p "Press enter to continue"
+clear
+
+echo "Case 8: Lowerizing and upperizing two files without recursion"
+echo "used commands:"
+echo "./modify -u test_modify/test1/abc.txt test_modify/test1/DEF.TXT"
+echo "./modify -l test_modify/test1/abc.txt test_modify/test1/DEF.TXT"
+echo "Content of folder test1: "
+ls test_modify/test1
+./modify -u test_modify/test1/abc.txt test_modify/test1/DEF.TXT
+echo "Content of folder test1 after upperizing: "
+ls test_modify/test1
+./modify -l test_modify/test1/ABC.TXT test_modify/test1/DEF.TXT
+echo "Content of folder test1 after lowerizing: "
+ls test_modify/test1
+echo "NOTE: as it can be seen if want to upperize file that contains already only upper letters it remains unchanged. Same goes with lowerizing"
+read -p "Press enter to continue"
+clear
+
+echo "Case 9 and 10: Lowerizing and upperizing files with recursion + operation on files that contain symbols and spaces"
+echo "used commands:"
+echo "./modify -r -u test_modify/test2"
+echo "./modify -r -l test_modify/TEST2"
+echo "Whole content of folder test2"
+cd test_modify
+find test2
+cd ..
+read -p "Press enter to continue"
+clear
+./modify -r -u test_modify/test2
+echo "Content of folder test2 after upperizing: "
+cd test_modify
+find TEST2
+cd ..
+read -p "Press enter to continue"
+clear
+./modify -r -l test_modify/TEST2
+echo "Content of folder test2 after lowerizing: "
+cd test_modify
+find test2
+cd ..
+read -p "Press enter to continue"
+clear
+
+echo "Case 11: Lowerizing and upperizing two files using sed pattern"
+echo "used commands:"
+echo "./modify 's/\(.*\)/\U\1/' test_modify/test1/abc.txt test_modify/test1/def.txt"
+echo "./modify 's/\(.*\)/\L\1/' test_modify/test1/ABC.TXT test_modify/test1/DEF.TXT"
+echo "Content of folder test1: "
+ls test_modify/test1
+./modify 's/\(.*\)/\U\1/' test_modify/test1/abc.txt test_modify/test1/def.txt
+echo "Content of folder test1 after upperizing: "
+ls test_modify/test1
+./modify 's/\(.*\)/\L\1/' test_modify/test1/ABC.TXT test_modify/test1/DEF.TXT
+echo "Content of folder test1 after lowerizing: "
+ls test_modify/test1
+read -p "Press enter to continue"
+clear
+
+echo "Case 12: Using wrong sed pattern"
+echo "used command: ./modify '\///sa///\' test_modify/test1/abc.txt test_modify/test1/def.txt"
+./modify '\///sa///\' test_modify/test1/abc.txt test_modify/test1/def.txt
+read -p "Press enter to continue"
+clear
+
+echo "Case 13: Using recursion on single file"
+echo "used command: ./modify -r -u test_modify/test1/abc.txt"
+echo "Content of folder test1: "
+ls test_modify/test1
+./modify -r -u test_modify/test1/abc.txt
+echo "Content of folder test1 after upperizing using recursion: "
+ls test_modify/test1
+read -p "Press enter to continue"
+clear
+
+echo "End of tests. Now all files will be removed!"
+read -p "Press enter to continue"
+rm -r test_modify
+exit 0
+}
+
+until [ -z "$1" ] #If argument is empty stop checking for option/files/directories, otherwise set proper flags, fill array or display error
+do
+    case "$1" in
+        -h) help_flag=true;;
+        -*) help_flag=true;;
+        *) help_flag=true;;
+    esac
+    shift
+done
+
+if $help_flag
+then 
+    display_help
+else
+    test_modify
+fi

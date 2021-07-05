@@ -1,0 +1,137 @@
+#! /bin/bash
+# All needed flags and variables
+recursive_flag=false
+lower_flag=false
+upper_flag=false
+help_flag=false
+sed_flag=false
+array_of_elements=()
+num_of_elements=0
+
+error_message() # fun. which display message if there was an error during procedure of file
+{
+cat << ERR
+
+Given command is not proper. Try $0 -h for more information 
+
+ERR
+exit 1
+} 
+
+display_help() # fun. which display message if user entered -h command 
+{
+cat << HELP
+
+Usage: 
+$0 [-r] [-l|-u] <dir/file names>
+$0 [-r] <sed pattern> <dir/file names>
+$0 [-h]
+-l to lowerize file names
+-u to upperize file names 
+-r to do it with recursion
+
+HELP
+exit 0
+}
+
+analize_input() #fun. which checks if enter is sed pattern or filename to edit. Gathers all files/directories into one array
+{
+    if [ "$sed_flag" = false ] 
+    then
+        if [ "$lower_flag" = false ] && [ "$upper_flag" = false ] 
+        then
+            sed_flag=true
+            sed_pattern=$analize
+        else
+            array_of_elements[$num_of_elements]=$analize 
+        fi
+    else
+        array_of_elements[$num_of_elements]=$analize    
+    fi
+}
+
+change_with_rec() #fun. which activate if user entered -r command
+{
+    find "$element" -depth -print0 | while read -d $'\0' full_directory;
+    do
+        dir_name="$(dirname -- "$full_directory")" #full_directory
+        file_name="$(basename -- "$full_directory")" #Seprate file name which will be edited from whole full_directory 
+        if $upper_flag
+        then
+                mv -- "$full_directory" "$dir_name/${file_name^^}" 1>&/dev/null #Upperize file name, ignores error msg if file is alreadupperized
+        else
+                mv -- "$full_directory" "$dir_name/${file_name,,}" 1>&/dev/null #Lowerize file name, ignores error msg if file is alreadupperized
+        fi
+    done
+}
+
+change_with_sed() #Fun, which works basically like previous one except it uses sed command to upperize or lowerize file name
+{
+    find "$element" -depth -print0 | while read -d $'\0' full_directory;
+    do
+        dir_name="$(dirname -- "$full_directory")" #full_directory
+        file_name="$(basename -- "$full_directory")" #Seprate file name which will be edited from whole full_directory
+        mv -- "$full_directory" "$dir_name/`echo $file_name | sed "$sed_pattern"`" 1>&/dev/null
+    done
+}
+
+until [ -z "$1" ] #If argument is empty stop checking for option/files/directories, otherwise set proper flags, fill array or display error
+do
+    case "$1" in 
+        -r) recursive_flag=true;;
+        -l) lower_flag=true;;
+        -u) upper_flag=true;;
+        -h) help_flag=true;;
+        -*) if [ -d $1 ] || [ -f $1 ]
+            then
+            analize=$1; analize_input; ((num_of_elements++))
+            else
+            error_message
+            fi
+            ;;
+        *) analize=$1; analize_input; ((num_of_elements++));; 
+        esac
+        shift #After checking the argument move to the another by shifting
+done
+
+if $help_flag #if -h was used, no matter of others flags, it will always display help
+then
+    display_help
+fi
+
+for element in ${array_of_elements[*]} 
+do
+    if [ -d $element ] || [ -f $element ] #Check if given file or full_directory exist
+    then
+        dir_name=$(dirname -- $element)
+        file_name=$(basename -- $element)
+        if $recursive_flag #Check if user asked for recursion 
+        then
+            if [ "$lower_flag" = true ] && [ "$upper_flag" = false ]
+            then
+                change_with_rec
+            elif [ "$lower_flag" = false ] && [ "$upper_flag" = true ] 
+            then
+                change_with_rec
+            elif [ "$lower_flag" = false ] && [ "$upper_flag" = false ] 
+            then
+                change_with_sed
+            else #if both flags upper and lower flag are up, display error
+                error_message
+            fi
+        elif [ "$lower_flag" = true ] && [ "$upper_flag" = false ]
+        then
+                mv -- "$element" "$dir_name/${file_name,,}" 1>&/dev/null
+        elif [ "$lower_flag" = false ] && [ "$upper_flag" = true ] 
+        then
+                mv -- "$element" "$dir_name/${file_name^^}" 1>&/dev/null
+        elif [ "$lower_flag" = false ] && [ "$upper_flag" = false ]
+        then
+                mv -- "$element" "$dir_name/`echo $file_name | sed "$sed_pattern"`" 1>&/dev/null
+        else
+            error_message #if both flags upper and lower flag are up, display error
+        fi
+    else #If file/full_directory does not exist, display error 
+        echo "$element: Given file or directory does not exist!"
+    fi
+done
